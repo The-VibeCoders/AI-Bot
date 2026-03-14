@@ -40,7 +40,7 @@ ollama run llama3
 
 2. Clone the Repository
 
-git clone [https://github.com/Kaustubh-465/your-repo-name.git](https://github.com/Kaustubh-465/your-repo-name.git)
+git clone [[https://github.com/Kaustubh-465/your-repo-name.git](https://github.com/Kaustubh-465/your-repo-name.git)](https://github.com/The-VibeCoders/AI-Bot)
 cd your-repo-name
 
 
