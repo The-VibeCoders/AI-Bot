@@ -1,4 +1,4 @@
-Personal AI Chatbot / Influencer Model 🤖
+Personal AI Chatbot 🤖
 
 An interactive, locally-hosted AI chatbot built with Python, Streamlit, and Ollama. This project demonstrates the integration of modern generative AI tools with a web-based frontend to create customizable conversational agents and persona models.
 
@@ -58,9 +58,8 @@ pip install streamlit
 
 💻 Usage
 
-Start the Streamlit development server:
-
-streamlit run app.py
+Start the Fastapi development server:
+python server.py
 
 
 The application will automatically open in your default web browser (usually at http://localhost:8501).
