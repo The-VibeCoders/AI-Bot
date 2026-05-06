@@ -1,77 +1,59 @@
-Personal AI Chatbot 🤖
+# Doremon Local AI Agent
 
-An interactive, locally-hosted AI chatbot built with Python, Streamlit, and Ollama. This project demonstrates the integration of modern generative AI tools with a web-based frontend to create customizable conversational agents and persona models.
+Doremon is a high-performance, fully local AI assistant designed for privacy and speed. It combines a powerful vector-based memory engine, local LLM orchestration via Ollama, image generation, and live web search into a single cohesive platform accessible via a sleek web interface.
 
-🚀 Overview
+## 🌟 Key Features
 
-This application leverages Ollama to run Large Language Models (LLMs) entirely locally, ensuring data privacy and reducing API costs. The frontend is powered by Streamlit, providing a clean, responsive, and interactive chat interface. By utilizing custom system prompts, the chatbot can be tailored to adopt specific personas, acting as a foundation for "AI influencer" modeling.
+* **100% Local Processing:** Powered by Ollama for LLMs (defaulting to `deepseek-r1:7b`) and Hugging Face Diffusers for image generation. Everything stays on your machine.
+* **Advanced Memory System:** Features a high-speed vector engine using NumPy and JSONL for Long-Term Memory (LTM), and a sliding window for Short-Term Memory (STM).
+* **Live Web Search:** Autonomously searches the web using DuckDuckGo (`ddgs`) and scrapes context using BeautifulSoup when factual queries require live internet access.
+* **Image Generation:** Integrated Stable Diffusion pipeline (`realistic-vision-v51`) for generating images directly in the chat with caching for fast VRAM inference.
+* **PDF Document Ingestion:** Read and vectorize local PDF files directly into the agent's long-term memory for local Retrieval-Augmented Generation (RAG).
+* **FastAPI Backend & Modern GUI:** Serves a responsive, dark-themed web UI with session management, markdown support, Server-Sent Events (SSE) streaming chat, and graphical tools to wipe or inspect memory.
 
-🛠️ Tech Stack
+## 🛠️ Tech Stack
 
-Language: Python 3.x
+* **Backend:** FastAPI, Uvicorn, Python
+* **AI & ML Orchestration:** Ollama, PyTorch, Diffusers, Transformers
+* **Vector Database:** NumPy (Matrix Math), JSONL
+* **Web Scraping:** DuckDuckGo Search (`ddgs`), BeautifulSoup4, Requests
+* **Frontend:** HTML5, CSS3 (Inter & JetBrains Mono fonts), Vanilla JavaScript
 
-Frontend UI: Streamlit
+## 🚀 Installation & Setup
 
-AI/LLM Engine: Ollama (Local Inference)
+**1. Install Prerequisites** Ensure you have Python installed and a CUDA-capable GPU for image generation. You also need [Ollama](https://ollama.ai/) installed and running locally on your machine.
 
-Models: Llama 3 / Mistral (or specify your preferred local model)
+**2. Install Dependencies**
+Install all required Python packages using the provided requirements file:
+bash
+pip install -r requirements.txt
 
-✨ Key Features
+3. Pull an LLM
+Before running the agent, pull your preferred model via Ollama (Doremon defaults to DeepSeek):
+Bash
+ollama pull deepseek-r1:7b
 
-Local AI Inference: Runs entirely on your local machine using Ollama, requiring no external API keys (like OpenAI) and ensuring complete data privacy.
-
-Interactive Chat Interface: A sleek, WhatsApp-style messaging UI built rapidly with Streamlit's chat elements.
-
-Persona Customization: Easily swap out system prompts to change the AI's behavior, tone, and knowledge base (e.g., from a helpful coding assistant to a specific influencer persona).
-
-Session State Management: Retains conversation history within the active session for context-aware responses.
-
-⚙️ Installation & Setup
-
-Follow these steps to get the project running on your local machine:
-
-1. Install Ollama
-
-Download and install Ollama from ollama.com.
-Once installed, open your terminal and pull a model (e.g., Llama 3):
-
-ollama run llama3
-
-
-2. Clone the Repository
-
-git clone (https://github.com/The-VibeCoders/AI-Bot)
-cd your-repo-name
-
-
-3. Set Up a Virtual Environment (Recommended)
-
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-
-
-4. Install Dependencies
-
-pip install streamlit
-# Add any other required libraries here, e.g., requests, langchain, etc.
-
-
-💻 Usage
-
-Start the Fastapi development server:
+4. Run the Server
+Start the FastAPI backend, which will automatically bind to 0.0.0.0:8000 to ensure it is reachable locally or inside Docker:
+Bash
 python server.py
 
 
-The application will automatically open in your default web browser (usually at http://localhost:8501).
+💻 Usage & UI Guide
+Access the web UI by navigating to http://localhost:8000 in your web browser.
 
-🔮 Future Enhancements
+Available Tools:
 
-[ ] Add Retrieval-Augmented Generation (RAG) to allow the bot to answer questions based on custom PDF documents.
+💬 Chat & Search: Speak naturally. Doremon will evaluate if it needs to search the web automatically for factual or location-based questions.
 
-[ ] Implement a database (SQLite/MySQL) to save chat histories across different sessions.
+🎨 Generate Images: Type a visual prompt and click the palette icon (🎨) in the chat bar.
 
-[ ] Add Voice-to-Text capabilities for hands-free interaction.
+📄 Upload PDF: Click the document icon (📄) to upload a PDF file and vectorize its contents into the agent's knowledge base.
 
-[ ] Containerize the application using Docker for easier deployment.
+🧹 Clear Context: Click the broom icon (🧹) to reset the short-term conversation context for a fresh start.
 
-Developed by The Vibecoders
+⚙️ Change Model: Use the sidebar to switch between any downloaded Ollama models on the fly.
+
+🧠 Manage Memory: View recent vectorized memories or completely wipe the database using the sidebar utilities.
+
+(For terminal power users, you can bypass the web UI and run the CLI mode directly via the core bot.py script.)
