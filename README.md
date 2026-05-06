@@ -30,12 +30,12 @@ pip install -r requirements.txt
 
 3. Pull an LLM
 Before running the agent, pull your preferred model via Ollama (Doremon defaults to DeepSeek):
-Bash
+
 ollama pull deepseek-r1:7b
 
 4. Run the Server
 Start the FastAPI backend, which will automatically bind to 0.0.0.0:8000 to ensure it is reachable locally or inside Docker:
-Bash
+
 python server.py
 
 
