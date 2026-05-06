@@ -1,13 +1,13 @@
-# --- Core LLM Engine ---
-ollama>=0.4.0             # Official Python library for Ollama
-
-# --- AI & Memory (RAG) ---
-numpy>=1.24.0             # For handling vector embeddings
-torch>=2.0.0              # Required for your local RAG/tensor logic
-
-# --- Image Generation ---
+fastapi
+uvicorn
+ollama
+numpy
 diffusers
-Pillow
-
-# --- PDF Processing ---
+transformers
+accelerate
 pypdf
+pillow
+python-multipart
+ddgs
+beautifulsoup4
+requests
