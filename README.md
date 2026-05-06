@@ -25,7 +25,7 @@ Doremon is a high-performance, fully local AI assistant designed for privacy and
 
 **2. Install Dependencies**
 Install all required Python packages using the provided requirements file:
-bash
+
 pip install -r requirements.txt
 
 3. Pull an LLM
