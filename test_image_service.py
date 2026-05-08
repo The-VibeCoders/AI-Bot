@@ -1,5 +1,5 @@
 ﻿import sys
-sys.path.append("C:\\Users\\divek\\Desktop\\mini project v2")
+sys.path.append()
 from app.services.image_service import ImageService
 
 service = ImageService()
