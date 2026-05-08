@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+numpy
+torch
+ollama
+beautifulsoup4
+requests
+pypdf
+diffusers
+transformers
+accelerate
+pillow
