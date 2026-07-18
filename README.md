@@ -1,264 +1,146 @@
 # Doremon Local AI Agent
 
-A local-first AI assistant with chat, web search, image generation/editing, PDF ingestion, and memory — all running on your machine.
+Doremon is a local-first AI assistant with a FastAPI backend and a vanilla-JS web UI. It supports chat with long-term vector memory, web search, PDF ingestion, image generation/editing, and an autonomous **Coding Agent** mode that can read/write files, run shell commands, and manage git — all through a pluggable multi-provider LLM layer (Ollama, OpenAI, Anthropic, Gemini, Mistral, Cohere, or any OpenAI-compatible endpoint).
 
-## Architecture
+> This is a single-local-user app — there is no login/registration system. All requests operate as one local account (`local_user`).
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      FastAPI (app/main.py)                       │
-│  Port 8000 · SSE streaming · JWT auth · SQLite + ChromaDB       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────────┐  │
-│  │  Agent   │  │  Image   │  │  Image   │  │   Web Scraper  │  │
-│  │  Core    │  │  Service │  │  Editor  │  │   (DuckDuckGo) │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────────────┘  │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────────────────────┐  │
-│  │ ChromaDB │  │  PDF     │  │  Ollama (external process)    │  │
-│  │ Memory   │  │  Ingest  │  │  deepseek-r1:7b + nomic-embed │  │
-│  └──────────┘  └──────────┘  └───────────────────────────────┘  │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────────────────────┐  │
-│  │ SQLite   │  │ Sessions │  │  Stable Diffusion            │  │
-│  │ (users)  │  │ (JSON)   │  │  (CUDA 12.8 / CPU fallback)  │  │
-│  └──────────┘  └──────────┘  └───────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                         ▲
-                         │ HTTP / SSE
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Frontend (static/index.html)                    │
-│   Vanilla JS · EventSource streaming · Dark UI · Image Editor   │
-└─────────────────────────────────────────────────────────────────┘
-```
+## 🌟 Key Features
 
-## Directory Structure
+- **Multi-Provider LLM Support:** Chat with local models via [Ollama](https://ollama.ai/) (default) or plug in cloud providers — OpenAI, Anthropic, Google Gemini, Mistral, Cohere, or any OpenAI-compatible API. Provider API keys are added at runtime through the UI/API and stored encrypted on disk.
+- **Personalities:**
+  - **Standard** — general-purpose chat assistant with web search, memory, and PDF analysis.
+  - **Coding Agent** — an autonomous engineering assistant that can list directories, read/write/patch files, run shell commands (with user approval), and use git (`status`, `commit`, `undo`, `redo`) inside a configurable working directory.
+- **Advanced Memory System:** Vector-based long-term memory (LTM) via ChromaDB, plus a sliding-window short-term memory (STM) per chat session.
+- **Live Web Search:** Auto-triggered DuckDuckGo search with page scraping (via BeautifulSoup) when a query needs live information.
+- **Image Generation & Editing:** Local Stable Diffusion pipeline (`realistic-vision-v51`) for text-to-image and AI-assisted image-to-image editing, plus a traditional Pillow-based editor (resize, crop, rotate, flip, blur, sharpen, brightness/contrast, text overlay, borders).
+- **PDF & File Ingestion:** Upload PDFs, code, or text files; content is parsed/vectorized into long-term memory for later recall.
+- **Project & Session Management:** Multiple chat sessions (create/switch/delete), a recent-projects list, and per-session file attachments.
+- **Streaming Chat UI:** FastAPI backend streams tokens over Server-Sent Events (SSE) to a dark-themed, framework-free web frontend, with a stop/cancel button for in-flight responses.
+
+## 🛠️ Tech Stack
+
+- **Backend:** FastAPI, Uvicorn, Python
+- **LLM Providers:** Ollama, OpenAI, Anthropic, Google Gemini, Mistral, Cohere (via their respective SDKs), plus generic OpenAI-compatible endpoints
+- **Vector Memory:** ChromaDB (persistent, cosine similarity)
+- **Image Generation/Editing:** PyTorch, Diffusers, Transformers, Accelerate, Pillow
+- **Web Scraping:** DuckDuckGo Search (`ddgs`), BeautifulSoup4, Requests, httpx
+- **PDF Handling:** pypdf
+- **Secrets Storage:** Provider API keys encrypted at rest (Fernet) in `provider_keys.json`
+- **Frontend:** HTML5, CSS3, vanilla JavaScript (`static/App.js`), SSE via `EventSource`
+
+## 📁 Project Structure
 
 ```
-mini project v2/
+project/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI server, routes, auth
+│   ├── main.py                     # FastAPI app, all HTTP/SSE routes
 │   ├── core/
-│   │   ├── agent.py         # Chat logic, session management, model orchestration
-│   │   ├── config.py        # Settings (env vars, model IDs, secrets)
-│   │   ├── database.py      # ChromaDB vector memory (recall/remember)
-│   │   ├── security.py      # JWT creation, password hashing, auth middleware
-│   │   └── user_db.py       # SQLite User model (SQLAlchemy)
+│   │   ├── agent.py                # Chat orchestration, sessions, tool-call loop, git ops
+│   │   ├── config.py                # Paths, model defaults, tunables
+│   │   ├── database.py              # ChromaDB vector memory (remember/recall)
+│   │   ├── security.py              # Local-user resolver (no auth — single user)
+│   │   └── providers/
+│   │       ├── manager.py           # Resolves model id -> provider instance
+│   │       ├── key_store.py         # Encrypted storage for provider API keys
+│   │       ├── base.py               # LLMProvider interface + error codes
+│   │       ├── ollama_provider.py
+│   │       ├── openai_provider.py
+│   │       ├── anthropic_provider.py
+│   │       ├── gemini_provider.py
+│   │       ├── mistral_provider.py
+│   │       ├── cohere_provider.py
+│   │       └── openai_compatible_provider.py
+│   ├── personalities/
+│   │   ├── registry.py               # Personality discovery/lookup
+│   │   ├── base.py                    # BasePersonality interface
+│   │   ├── standard.py                 # Standard chatbot personality
+│   │   └── coding_agent.py             # Coding Agent personality + file/shell/git tools
 │   ├── services/
-│   │   ├── image_service.py # Stable Diffusion text-to-image + img2img
-│   │   ├── image_editing.py # Pillow-based image manipulation (crop, resize, etc.)
-│   │   ├── pdf_service.py   # PDF text extraction + vector ingestion
-│   │   └── scraper_service.py # DuckDuckGo search + webpage scraping
+│   │   ├── image_service.py            # Stable Diffusion text-to-image / img2img
+│   │   ├── image_editing.py            # Pillow-based image editing
+│   │   ├── pdf_service.py              # PDF text extraction + vector ingestion
+│   │   ├── pdf_preview.py              # PDF info + thumbnail generation
+│   │   └── scraper_service.py          # Web search + scraping
 │   └── utils/
-│       └── compat.py        # Ollama embedding + chunk token extraction
+│       └── compat.py                   # Embedding helper + streaming chunk parsing
 ├── static/
-│   ├── index.html           # SPA frontend
-│   ├── styles.css           # Dark theme UI
-│   └── App.js               # Frontend logic (chat, auth, sessions, image editor)
-├── sessions/                # Chat session JSON files (per-user subdirectories)
-├── chroma_db/               # ChromaDB persistent vector store
-├── cli.py                   # CLI interface for testing without frontend
-├── requirements.txt         # Python dependencies
-└── users.db                 # SQLite database (users table)
+│   ├── index.html                      # SPA frontend
+│   ├── styles.css                      # Dark theme UI
+│   └── App.js                          # Frontend chat/session/image-editor logic
+├── cli.py                              # Terminal chat client (no web UI required)
+└── requirements.txt                    # Python dependencies
 ```
 
-## Tech Stack
+*(Runtime-generated, not part of the repo: `sessions/`, `chroma_db/`, `uploads/`, `provider_keys.json`, `.secret_key`.)*
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.14, FastAPI, Uvicorn |
-| LLM | Ollama (`deepseek-r1:7b` default) |
-| Embeddings | Ollama (`nomic-embed-text`) |
-| Vector DB | ChromaDB (persistent, cosine similarity) |
-| Auth | JWT (python-jose), bcrypt passwords |
-| User DB | SQLite via SQLAlchemy |
-| Image Gen | Stable Diffusion 1.5 (diffusers, CUDA 12.8) |
-| Image Edit | Pillow (resize, crop, rotate, blur, etc.) |
-| Streaming | Server-Sent Events (EventSource) |
-| Frontend | Vanilla JS, no frameworks |
-| Web Search | DuckDuckGo Search SDK + BeautifulSoup |
+## 🚀 Installation & Setup
 
-## API Reference
+**1. Install Prerequisites**
+Python 3.10+ is required. A CUDA-capable GPU is recommended (but not required — there's a CPU fallback) for image generation. If you want to use local models, install and run [Ollama](https://ollama.ai/).
 
-### Auth
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/register` | No | Create account (password ≥ 6 chars) |
-| `POST` | `/login` | No | Login, returns `access_token` + `refresh_token` |
-| `POST` | `/token/refresh` | Bearer | Exchange refresh token for new access token |
-
-### Chat
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/chat?message=...&session_id=...` | Bearer/Query | SSE streaming chat |
-| `GET` | `/models` | Bearer | List available Ollama models |
-| `POST` | `/models/switch?model=...&session_id=...` | Bearer | Switch active model |
-
-### Memory
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/memory/stats` | Bearer | Per-user memory count |
-| `DELETE` | `/memory/wipe` | Bearer | Wipe user's vector memory |
-| `DELETE` | `/memory/context` | Bearer | Clear current session context |
-| `GET` | `/memory/recent?limit=10` | Bearer | Recent memories |
-
-### Sessions
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/sessions` | Bearer | List sessions with active ID |
-| `POST` | `/sessions/new` | Bearer | Create new session |
-| `POST` | `/sessions/{id}` | Bearer | Load a session |
-| `DELETE` | `/sessions/{id}` | Bearer | Delete a session |
-
-### Images
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/draw` | Bearer | Generate image from prompt (SD) |
-| `POST` | `/image/upload` | Bearer | Upload image for editing |
-| `POST` | `/image/edit` | Bearer | Apply edits (crop, resize, etc.) |
-| `POST` | `/image/ai-edit` | Bearer | AI image-to-image editing |
-| `GET` | `/images/{filename}` | No | Serve generated/edited images |
-
-### Files
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/upload` | Bearer | Upload & ingest PDF |
-
-## Features
-
-### Chat
-- Streaming responses via SSE with real-time token display
-- Session management (create, switch, delete conversations)
-- Web search integration (auto-triggered on search-like queries)
-- Long-term memory via ChromaDB vector recall
-- Markdown rendering (code blocks, inline code)
-
-### Image Generation
-- Stable Diffusion 1.5 (`realistic-vision-v51` model)
-- GPU acceleration via CUDA 12.8 (RTX 3050 Ti: ~3.5s for 20 steps)
-- CPU fallback when no GPU available
-- Seed-based reproducibility
-
-### Image Editor
-- Traditional edits: resize, crop, rotate, flip, blur, sharpen
-- Color adjustments: brightness, contrast, grayscale
-- Text overlay, borders
-- AI-powered img2img editing with Stable Diffusion
-
-### PDF Ingestion
-- Extract text from PDFs page by page
-- Vectorize and store in ChromaDB for later recall
-- Batch embedding for efficiency
-
-### Auth System
-- JWT-based authentication (1 week expiry)
-- Refresh token mechanism (1 day expiry)
-- Auto-refresh on 401 in frontend (transparent to user)
-- Password minimum length validation (6 chars)
-
-## Setup
-
-### Prerequisites
-
-- Python 3.10+
-- [Ollama](https://ollama.com) running locally (default model: `deepseek-r1:7b`)
-- NVIDIA GPU with CUDA (optional, for image generation)
-
-### Installation
+**2. Install Dependencies**
 
 ```bash
-# Create virtual environment
-python -m venv .venv
-.venv\Scripts\activate    # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Install embedding model (required)
-ollama pull nomic-embed-text
-
-# Pull chat model (optional, deepseek-r1:7b default)
-ollama pull deepseek-r1:7b
 ```
 
-### Configuration
-
-Set environment variables (optional):
+**3. Pull a Local LLM (optional, if using Ollama)**
 
 ```bash
-set DOREMON_SECRET=your-secure-secret-key  # JWT signing key (dev default provided)
+ollama pull llama3.2
 ```
 
-### Running
+> Note: cloud providers (OpenAI, Anthropic, Gemini, Mistral, Cohere, or an OpenAI-compatible endpoint) can be added and used instead of/alongside Ollama — see **Adding Cloud Providers** below. No provider is hardcoded as required at startup.
+
+**4. Run the Server**
 
 ```bash
 python -m app.main
 ```
 
-Open http://localhost:8000 in a browser. Register an account and start chatting.
+This starts the FastAPI backend on `0.0.0.0:8000`.
+
+## 💻 Usage & UI Guide
+
+Open `http://localhost:8000` in your browser.
+
+**Available Tools:**
+
+- 💬 **Chat:** Talk naturally. Doremon automatically pulls in relevant memory, recently uploaded documents, and live web search results as needed.
+- 🧠 **Switch Personality:** Choose between **Standard** chat and **Coding Agent** mode from the UI.
+- ⌨️ **Coding Agent:** Set a working directory, then ask Doremon to read/write/patch files, run shell commands (you'll be prompted to approve each command), or manage git history (`git_status`, `git_commit`, `git_undo`, `git_redo`).
+- 🎨 **Generate Images:** Enter a prompt and click the palette icon to generate with Stable Diffusion.
+- 🖌️ **Edit Images:** Upload an image for traditional edits (crop, resize, rotate, filters, text, borders) or AI-assisted img2img editing.
+- 📄 **Upload Files:** Upload PDFs, code, or text files — content is ingested into memory for later recall in that session.
+- 🧹 **Clear Context:** Reset the short-term context for the current session.
+- ⚙️ **Manage Models & Providers:** Add/remove local Ollama models, or register a cloud provider (with API key) and pick from its detected models.
+- 🧠 **Manage Memory:** View memory stats, browse recent memories, or wipe all stored memory.
+- 📂 **Sessions & Projects:** Create, switch, and delete chat sessions; switch between recent working-directory "projects."
+
+### Adding Cloud Providers
+
+From the UI (or via `POST /providers/add`), register a provider with a name, type (`openai`, `anthropic`, `gemini`, or `openai_compatible`), and API key. Once added, its models become selectable from the model list. API keys are encrypted before being written to disk.
 
 ### CLI Mode
+
+For a terminal-only chat client that doesn't require the web UI:
 
 ```bash
 python cli.py
 ```
 
-## GPU Image Generation
-
-The image service auto-detects CUDA. If you have an NVIDIA GPU:
-
-```bash
-# PyTorch with CUDA 12.8 is already installed
-torch==2.11.0+cu128
+CLI commands:
+```
+/draw <prompt>    - Generate an image
+/read <path>      - Ingest a PDF into memory
+/model <name>     - Switch LLM model
+/list             - List all available models
+/clear            - Clear current chat context
+/wipe             - Wipe all vector memory
+/help             - Show the guide
+/quit             - Exit
 ```
 
-20-step 512×512 images generate in ~3.5 seconds on RTX 3050 Ti (4GB VRAM).
+## License
 
-## Current Status
-
-### Working
-- Chat with streaming, session management, context persistence
-- Web search integration (DuckDuckGo)
-- Vector memory (ChromaDB recall + remember)
-- PDF ingestion
-- Image generation on GPU (~3.5s per image)
-- Image editing (traditional + AI img2img)
-- JWT auth with refresh tokens
-- Auto-refresh on 401 in frontend
-- Session CRUD (create, read, delete)
-
-### Known Issues
-
-| Issue | Location | Status |
-|-------|----------|--------|
-| Image service double-initialized | `main.py:31` + `agent.py:18` | Two instances created |
-| No multi-user session isolation in ChromaDB `get_recent` | `database.py:111-126` | Needs user_id filter |
-| Corrupted session files silently skipped | `agent.py:49` | No logging |
-| Unicode emojis cause console errors on Windows | `image_service.py` | cp1252 encoding |
-| Deprecation warnings for VAE methods | `image_service.py` | Using deprecated API |
-| No upload file size limits | `main.py` `/upload` + `/image/upload` | No max_size enforcement |
-| `switch_model` wipes all sessions when no session_id given | `agent.py:106-109` | Destructive behavior |
-| SSE token in URL query param (EventSource limitation) | `App.js:285` | Exposed in server logs |
-
-### Fixed (Recent)
-
-| Fix | Date |
-|-----|------|
-| GPU image generation (replaced CPU-only PyTorch with CUDA 12.8) | 2026-05-20 |
-| SECRET_KEY reads from `DOREMON_SECRET` env var | 2026-05-20 |
-| Token refresh endpoint + auto-refresh on 401 | 2026-05-20 |
-| Password validation (≥6 chars) | 2026-05-20 |
-| DELETE endpoint for sessions | 2026-05-20 |
-| memory_stats filtered per-user | 2026-05-20 |
-| Session loading bugs (active_id tracking, orphan cleanup, null rejection) | 2026-05-20 |
-| Markdown rendering for assistant messages | 2026-05-20 |
-| Stop button for streaming responses | 2026-05-20 |
-| Static file routing (fixed 404s) | 2026-05-20 |
+See [LICENSE](LICENSE) for details.
