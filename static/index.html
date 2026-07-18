@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Doremon AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+<link rel="stylesheet" href="/static/styles.css?v=3"/>
+</head>
+<body>
+
+<div id="app">
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon">🤖</div>
+      <span>Doremon</span>
+    </div>
+  </div>
+
+  <button class="new-chat-btn" id="new-chat-btn">
+    <span>➕</span> New Chat
+  </button>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="section-label">Recent Chats</div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- Personality -->
+  <div class="sidebar-section personality-section">
+    <div class="section-label">Personality</div>
+    <div id="personality-selector" class="personality-selector">
+      <div style="color:#666;font-size:11px;padding:8px;">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Personality-specific sidebar controls -->
+  <div id="personality-sidebar-ui"></div>
+
+  <!-- Tools -->
+  <div class="sidebar-tools">
+    <button class="tool-btn" id="upload-btn-tool">
+      <span class="tool-btn-icon">📄</span> Upload File
+    </button>
+    <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.py,.js,.ts,.html,.css,.json,.md,.csv,.xml,.yaml,.yml"/>
+    
+    <button class="tool-btn" id="view-mem-btn">
+      <span class="tool-btn-icon">🧠</span> View Memories
+    </button>
+    
+    <button class="tool-btn" id="model-btn">
+      <span class="tool-btn-icon">⚙️</span> Change Model
+    </button>
+    
+    <button class="tool-btn" id="wipe-btn">
+      <span class="tool-btn-icon">🗑️</span> Wipe Memory
+    </button>
+    
+    <button class="tool-btn" id="providers-btn">
+      <span class="tool-btn-icon">🔌</span> Providers
+    </button>
+    
+    <div class="stats-display" id="stats-display">
+      <span>🧠 <span id="memory-count">0</span> memories</span>
+    </div>
+  </div>
+
+  <!-- Upload Status -->
+  <div class="upload-section">
+    <div class="upload-progress" id="upload-progress">
+      <div class="upload-progress-bar" id="upload-bar"></div>
+    </div>
+    <div id="upload-result"></div>
+  </div>
+</aside>
+
+<!-- Main Area -->
+<main id="main">
+  <header id="header">
+    <button class="menu-btn" id="toggle-sidebar">☰</button>
+    <div class="header-title">Doremon AI Agent</div>
+    <div class="header-actions">
+      <span class="header-btn" id="active-model-label">—</span>
+    </div>
+  </header>
+
+  <div id="chat-window">
+    <div id="welcome">
+      <div class="welcome-icon">🤖</div>
+      <div class="welcome-title">Welcome to Doremon</div>
+      <div class="welcome-subtitle">
+        Your private, local AI assistant. Everything stays on your machine.<br/>
+        Start a conversation or upload a PDF to get started.
+      </div>
+    </div>
+  </div>
+
+  <div id="input-container">
+    <div id="input-wrapper">
+      <div id="pending-attachments" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; padding:0 8px;"></div>
+      <div id="input-box">
+                <textarea id="msg-input" rows="1" placeholder="Message Doremon..."></textarea>
+<div class="input-actions">
+             <button class="input-btn" id="draw-btn" title="Generate Image">🎨</button>
+             <button class="input-btn" id="img-btn" title="Edit Image">🖼️</button>
+             <button class="input-btn" id="clear-btn" title="Clear">🧹</button>
+             <button class="input-upload-btn" id="upload-btn" title="Upload PDF">📄</button>
+             <button class="send-btn" id="send-btn">➤</button>
+             <button class="stop-btn" id="stop-btn" title="Stop Response" style="display: none;">⏹</button>
+           </div>
+        </div>
+      <div class="input-hint">Doremon can make mistakes. Please verify important information.</div>
+    </div>
+  </div>
+</main>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- Image Editor Modal -->
+<div id="img-editor-modal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>🖼️ Image Editor</span>
+      <button class="modal-close" onclick="closeImageEditor()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="img-upload-area" id="img-upload-area">
+        <input type="file" id="img-file-input" accept="image/*" style="display:none;"/>
+        <button class="upload-img-btn" onclick="document.getElementById('img-file-input').click()">📁 Upload Image</button>
+      </div>
+      <div id="img-preview" style="display:none;">
+        <img id="preview-img" style="max-width:100%;border-radius:8px;margin-bottom:12px;"/>
+        <div id="img-info" style="margin-bottom:12px;font-size:12px;color:#888;"></div>
+      </div>
+      <div id="edit-actions" style="display:none;">
+        <label>Action:</label>
+        <select id="edit-action-select">
+          <option value="ai_edit">AI Edit (Stable Diffusion)</option>
+          <option value="resize">Resize</option>
+          <option value="crop">Crop</option>
+          <option value="rotate">Rotate</option>
+          <option value="flip_horizontal">Flip Horizontal</option>
+          <option value="flip_vertical">Flip Vertical</option>
+          <option value="blur">Blur</option>
+          <option value="sharpen">Sharpen</option>
+          <option value="brightness">Brightness</option>
+          <option value="contrast">Contrast</option>
+          <option value="grayscale">Grayscale</option>
+          <option value="text">Add Text</option>
+          <option value="border">Add Border</option>
+        </select>
+        <div id="edit-params"></div>
+        <div class="edit-buttons">
+          <button class="edit-btn primary" id="apply-edit-btn">Apply</button>
+          <button class="edit-btn" id="reset-img-btn">Reset</button>
+        </div>
+      </div>
+      <div id="edit-result" style="display:none;margin-top:12px;">
+        <img id="result-img" style="max-width:100%;border-radius:8px;"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Model Selector Modal -->
+<div id="model-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:420px;">
+    <div class="modal-header">
+      <span>⚙️ Change Model</span>
+      <button class="modal-close" id="model-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;font-size:13px;color:#aaa;">Current: <strong id="model-modal-current" style="color:#fff;">—</strong></div>
+      <div id="model-modal-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
+      <button class="model-item" id="add-model-btn" style="justify-content:center;font-weight:600;">➕ Add New Model</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Model Modal -->
+<div id="add-model-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="modal-header">
+      <span>➕ Add New Model</span>
+      <button class="modal-close" id="add-model-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">Provider</label>
+        <select id="add-model-provider" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;">
+          <option value="ollama">Ollama (Local)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">Model ID</label>
+        <input type="text" id="add-model-id" placeholder="e.g. llama3.2, gpt-4, claude-3-sonnet-20240229" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;" />
+      </div>
+      <div id="add-model-api-section" style="margin-bottom:16px;display:none;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">API Key</label>
+        <input type="password" id="add-model-api-key" placeholder="sk-..." style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;" />
+      </div>
+      <div id="add-model-error" style="color:#ff5b5b;font-size:13px;margin-bottom:10px;min-height:20px;"></div>
+      <button id="add-model-submit" style="width:100%;padding:12px;font-size:15px;font-weight:600;background:#6b5bff;border:none;border-radius:6px;color:#fff;cursor:pointer;">Add Model</button>
+      <div style="margin-top:12px;text-align:center;font-size:12px;color:#888;">Need a new provider? <a href="#" id="add-model-add-provider-link" style="color:#8ab4f8;">Add Provider</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- Provider Manager Modal -->
+<div id="providers-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:450px;">
+    <div class="modal-header">
+      <span>🔌 Providers</span>
+      <button class="modal-close" id="providers-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="providers-list" style="margin-bottom:16px;"></div>
+      <button id="add-provider-btn" style="width:100%;padding:12px;font-size:15px;font-weight:600;background:#6b5bff;border:none;border-radius:6px;color:#fff;cursor:pointer;">➕ Add Provider</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Provider Modal -->
+<div id="add-provider-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:420px;">
+    <div class="modal-header">
+      <span>➕ Add Provider</span>
+      <button class="modal-close" id="add-provider-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">Provider Name</label>
+        <input type="text" id="add-provider-name" placeholder="e.g. groq, together, deepseek" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;" />
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">API Type</label>
+        <select id="add-provider-type" onchange="toggleProviderFields()" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;">
+          <option value="openai_compatible">OpenAI Compatible</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+      <div id="add-provider-base-url-section" style="margin-bottom:12px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">Base URL</label>
+        <input type="text" id="add-provider-base-url" placeholder="e.g. https://api.groq.com/openai/v1" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;margin-bottom:4px;color:#aaa;font-size:13px;">API Key</label>
+        <input type="password" id="add-provider-api-key" placeholder="API key" style="width:100%;padding:10px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;box-sizing:border-box;" />
+      </div>
+      <div id="add-provider-error" style="color:#ff5b5b;font-size:13px;margin-bottom:10px;min-height:20px;"></div>
+      <button id="add-provider-submit" style="width:100%;padding:12px;font-size:15px;font-weight:600;background:#6b5bff;border:none;border-radius:6px;color:#fff;cursor:pointer;">Add Provider</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.stats-display { padding: 8px 12px; font-size: 11px; color: #666; border-top: 1px solid #333; margin-top: 8px; }
+.modal { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center; }
+.modal-content { background:#2a2a2a;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow:auto; }
+.modal-header { padding:16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #444; }
+.modal-close { background:none;border:none;color:#888;font-size:24px;cursor:pointer; }
+.modal-body { padding:16px; }
+.img-upload-area { text-align:center;padding:40px;border:2px dashed #555;border-radius:8px; }
+.upload-img-btn { padding:10px 20px;background:#4a4a4a;border:none;border-radius:6px;color:#fff;cursor:pointer; }
+#edit-actions select { width:100%;padding:8px;margin:8px 0;border-radius:6px;background:#333;color:#fff;border:1px solid #555; }
+#edit-params { margin:12px 0; }
+#edit-params input, #edit-params select { width:100%;padding:8px;margin:4px 0;border-radius:6px;background:#333;color:#fff;border:1px solid #555; }
+.edit-buttons { display:flex;gap:8px;margin-top:12px; }
+.edit-btn { flex:1;padding:10px;border:none;border-radius:6px;cursor:pointer;background:#4a4a4a;color:#fff; }
+.edit-btn.primary { background:#6b5bff; }
+.edit-btn:hover { opacity:0.9; }
+.model-item { display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;background:#1e1e1e;border:1px solid #333;transition:all 0.15s;color:#ccc;font-size:14px; }
+.model-item:hover { border-color:#6b5bff;background:#2a2a2a;color:#fff; }
+.model-item.active { border-color:#6b5bff;background:rgba(107,91,255,0.15);color:#fff; }
+.model-item .model-check { width:18px;text-align:center;font-size:14px;color:#6b5bff; }
+.model-item .model-name { flex:1; }
+.model-item .model-size { font-size:11px;color:#666; }
+</style>
+
+<!-- Approval Dialog -->
+<div id="approval-dialog" class="modal" style="display:none;z-index:2000;">
+  <div class="modal-content" style="max-width:500px;">
+    <div class="modal-header">
+      <span>🔒 Tool Approval Required</span>
+    </div>
+    <div class="modal-body">
+      <div id="approval-tool-info" style="margin-bottom:16px;">
+        <div style="font-size:13px;color:#aaa;margin-bottom:4px;">Tool: <strong id="approval-tool-name" style="color:#fff;"></strong></div>
+        <div style="font-size:13px;color:#aaa;margin-bottom:4px;">Arguments:</div>
+        <pre id="approval-tool-args" style="background:#1e1e1e;padding:10px;border-radius:6px;font-size:12px;color:#ccc;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button id="approval-deny-btn" style="flex:1;padding:12px;font-size:15px;font-weight:600;background:#ff5b5b33;border:1px solid #ff5b5b;border-radius:6px;color:#ff5b5b;cursor:pointer;">Deny</button>
+        <button id="approval-approve-btn" style="flex:1;padding:12px;font-size:15px;font-weight:600;background:#81c99533;border:1px solid #81c995;border-radius:6px;color:#81c995;cursor:pointer;">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script src="/static/App.js?v=10"></script>
+</body>
+</html>
